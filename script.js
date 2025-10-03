@@ -1,759 +1,690 @@
 /**
- * Mancala Game - Complete Implementation with AI
+ * Mancala front-end logic built on top of MancalaEngine.
+ * Handles DOM updates, user interaction, and AI behaviour.
  */
 
+const HUMAN_PLAYER = 0;
+const AI_PLAYER = 1;
+const AI_MOVE_DELAY_MS = 0;
+const AI_EXTRA_TURN_DELAY_MS = 0;
+
 class MancalaGame {
-    constructor() {
-        // Game state
-        this.board = [4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 0]; // 14 positions: 0-5 human pits, 6 human store, 7-12 AI pits, 13 AI store
-        this.currentPlayer = 0; // 0 = human, 1 = AI
-        this.gameOver = false;
-        this.animationInProgress = false;
-        
-        // DOM elements
-        this.initializeDOM();
-        this.setupEventListeners();
-        this.renderBoard();
+    constructor({ soundManager } = {}) {
+        if (typeof MancalaEngine !== "function") {
+            throw new Error("MancalaEngine is not available. Did you include engine.js?");
+        }
+
+        this.engine = new MancalaEngine();
+        this.soundManager = soundManager ?? null;
+        this.inputLocked = false;
+        this.messageTimeout = null;
+
+        this.cacheDOM();
+        this.registerEventListeners();
+        this.refreshUI();
         this.showMessage("Your turn! Click on any of your pits to start.", "info");
     }
 
-    initializeDOM() {
+    cacheDOM() {
         this.humanPits = [];
         this.aiPits = [];
-        
-        // Get human pits (0-5)
+
         for (let i = 0; i <= 5; i++) {
-            this.humanPits.push(document.querySelector(`[data-pit="${i}"]`));
+            const pit = document.querySelector(`[data-pit="${i}"]`);
+            if (pit) {
+                this.humanPits.push(pit);
+            }
         }
-        
-        // Get AI pits (7-12, but displayed as 12-7)
+
         for (let i = 12; i >= 7; i--) {
-            this.aiPits.push(document.querySelector(`[data-pit="${i}"]`));
+            const pit = document.querySelector(`[data-pit="${i}"]`);
+            if (pit) {
+                this.aiPits.push(pit);
+            }
         }
-        
-        this.humanStore = document.getElementById('human-store');
-        this.aiStore = document.getElementById('ai-store');
-        this.turnIndicator = document.getElementById('turn-indicator');
-        this.messageDisplay = document.getElementById('message-display');
-        this.humanScoreDisplay = document.getElementById('human-score');
-        this.aiScoreDisplay = document.getElementById('ai-score');
+
+        this.humanStore = document.getElementById("human-store");
+        this.aiStore = document.getElementById("ai-store");
+        this.turnIndicator = document.getElementById("turn-indicator");
+        this.messageDisplay = document.getElementById("message-display");
+        this.humanScoreDisplay = document.getElementById("human-score");
+        this.aiScoreDisplay = document.getElementById("ai-score");
+        this.rulesModal = document.getElementById("rules-modal");
+        this.gameOverModal = document.getElementById("game-over-modal");
+        this.gameResultText = document.getElementById("game-result");
+        this.finalScoreText = document.getElementById("final-score");
     }
 
-    setupEventListeners() {
-        // Human pit clicks
-        this.humanPits.forEach((pit, index) => {
-            pit.addEventListener('click', () => {
-                if (this.currentPlayer === 0 && !this.gameOver && !this.animationInProgress) {
-                    this.makeMove(index);
-                }
-            });
+    registerEventListeners() {
+        this.humanPits.forEach((pitElement, index) => {
+            pitElement.addEventListener("click", () => this.makeMove(index));
         });
 
-        // Game controls
-        document.getElementById('new-game-btn').addEventListener('click', () => this.newGame());
-        document.getElementById('hint-btn').addEventListener('click', () => this.showHint());
-        
-        // Rules modal
-        const rulesBtn = document.getElementById('rules-btn');
-        const rulesModal = document.getElementById('rules-modal');
-        const closeModal = rulesModal.querySelector('.close-modal');
-        
-        rulesBtn.addEventListener('click', () => {
-            rulesModal.style.display = 'block';
-        });
-        
-        closeModal.addEventListener('click', () => {
-            rulesModal.style.display = 'none';
-        });
-        
-        window.addEventListener('click', (e) => {
-            if (e.target === rulesModal) {
-                rulesModal.style.display = 'none';
+        const newGameBtn = document.getElementById("new-game-btn");
+        if (newGameBtn) {
+            newGameBtn.addEventListener("click", () => this.newGame());
+        }
+
+        const hintBtn = document.getElementById("hint-btn");
+        if (hintBtn) {
+            hintBtn.addEventListener("click", () => this.showHint());
+        }
+
+        const rulesBtn = document.getElementById("rules-btn");
+        const closeRulesBtn = this.rulesModal?.querySelector(".close-modal");
+        if (rulesBtn && this.rulesModal) {
+            rulesBtn.addEventListener("click", () => {
+                this.rulesModal.style.display = "block";
+            });
+        }
+        if (closeRulesBtn && this.rulesModal) {
+            closeRulesBtn.addEventListener("click", () => {
+                this.rulesModal.style.display = "none";
+            });
+        }
+        window.addEventListener("click", (event) => {
+            if (event.target === this.rulesModal) {
+                this.rulesModal.style.display = "none";
+            }
+            if (event.target === this.gameOverModal) {
+                this.gameOverModal.style.display = "none";
             }
         });
 
-        // Game over modal
-        document.getElementById('play-again-btn').addEventListener('click', () => {
-            document.getElementById('game-over-modal').style.display = 'none';
-            this.newGame();
-        });
+        const playAgainBtn = document.getElementById("play-again-btn");
+        if (playAgainBtn) {
+            playAgainBtn.addEventListener("click", () => {
+                this.gameOverModal.style.display = "none";
+                this.newGame();
+            });
+        }
     }
 
-    renderBoard() {
-        // Update pit displays
-        this.humanPits.forEach((pit, index) => {
-            this.updatePitDisplay(pit, this.board[index]);
+    refreshUI() {
+        const board = this.engine.getBoard();
+
+        this.humanPits.forEach((pitElement, index) => {
+            this.updatePitDisplay(pitElement, board[index]);
         });
-        
-        this.aiPits.forEach((pit, index) => {
-            const boardIndex = 12 - index; // AI pits are 12, 11, 10, 9, 8, 7
-            this.updatePitDisplay(pit, this.board[boardIndex]);
+
+        this.aiPits.forEach((pitElement, displayIndex) => {
+            const boardIndex = 12 - displayIndex;
+            this.updatePitDisplay(pitElement, board[boardIndex]);
         });
-        
-        // Update stores
-        this.updateStoreDisplay(this.humanStore, this.board[6]);
-        this.updateStoreDisplay(this.aiStore, this.board[13]);
-        
-        // Update scores
-        this.humanScoreDisplay.textContent = this.board[6];
-        this.aiScoreDisplay.textContent = this.board[13];
-        
-        // Update turn indicator
+
+        this.updateStoreDisplay(this.humanStore, board[6]);
+        this.updateStoreDisplay(this.aiStore, board[13]);
+
+        this.updateScores();
         this.updateTurnIndicator();
-        
-        // Update pit interactivity
         this.updatePitInteractivity();
     }
 
+    updateScores() {
+        const scores = this.engine.getScores();
+        this.humanScoreDisplay.textContent = scores.human;
+        this.aiScoreDisplay.textContent = scores.ai;
+    }
+
+    makeMove(pitIndex) {
+        if (this.engine.gameOver) {
+            return;
+        }
+        if (this.inputLocked) {
+            this.showMessage("Please wait for the AI to finish its turn.", "warning");
+            return;
+        }
+        if (this.engine.currentPlayer !== HUMAN_PLAYER) {
+            this.showMessage("It's not your turn right now!", "warning");
+            return;
+        }
+        if (!this.engine.isValidMove(pitIndex, HUMAN_PLAYER)) {
+            this.showMessage("Choose a pit that contains stones.", "warning");
+            return;
+        }
+
+        this.performMove(pitIndex);
+    }
+
+    performMove(pitIndex) {
+        try {
+            const result = this.engine.applyMove(pitIndex);
+            if (this.soundManager) {
+                this.soundManager.playMove();
+            }
+            this.refreshUI();
+            this.handleMoveOutcome(result);
+        } catch (error) {
+            console.error(error);
+            this.showMessage(error.message, "error");
+        }
+    }
+
+    handleMoveOutcome(result) {
+        if (result.capture) {
+            const captured = result.capture.captured;
+            if (result.player === HUMAN_PLAYER) {
+                this.showMessage(`Captured ${captured} stones!`, "success");
+            } else {
+                this.showMessage(`AI captured ${captured} stones!`, "warning");
+            }
+            if (this.soundManager) {
+                this.soundManager.playCapture();
+            }
+        }
+
+        if (result.gameOver) {
+            this.lockInput(true);
+            this.refreshUI();
+            this.handleGameOver();
+            return;
+        }
+
+        if (result.extraTurn) {
+            if (result.player === HUMAN_PLAYER) {
+                this.lockInput(false);
+                this.showMessage("You get another turn!", "success");
+                this.refreshUI();
+            } else {
+                this.showMessage("AI gets another turn!", "info");
+                this.scheduleAIMove(AI_EXTRA_TURN_DELAY_MS);
+            }
+            return;
+        }
+
+        if (this.engine.currentPlayer === AI_PLAYER) {
+            this.scheduleAIMove(AI_MOVE_DELAY_MS);
+        } else {
+            this.lockInput(false);
+            this.refreshUI();
+        }
+    }
+
+    scheduleAIMove(delay = 0) {
+        if (this.engine.gameOver) {
+            this.lockInput(false);
+            return;
+        }
+
+        this.lockInput(true);
+        this.updateTurnIndicator();
+
+        const actualDelay = Math.max(0, delay);
+        if (actualDelay > 0) {
+            this.showMessage("AI is thinking...", "info");
+        }
+
+        setTimeout(() => this.makeAIMove(), actualDelay);
+    }
+
+    makeAIMove() {
+        if (this.engine.gameOver) {
+            this.lockInput(true);
+            return;
+        }
+        if (this.engine.currentPlayer !== AI_PLAYER) {
+            this.lockInput(false);
+            this.refreshUI();
+            return;
+        }
+
+        const move = this.chooseBestAIMove();
+        if (move === null) {
+            this.lockInput(false);
+            this.refreshUI();
+            if (!this.engine.gameOver) {
+                this.showMessage("AI has no moves.", "info");
+            }
+            return;
+        }
+
+        try {
+            const result = this.engine.applyMove(move);
+            if (this.soundManager) {
+                this.soundManager.playMove();
+            }
+            this.refreshUI();
+            this.handleMoveOutcome(result);
+        } catch (error) {
+            console.error(error);
+            this.lockInput(false);
+            this.showMessage("AI encountered an error while moving.", "error");
+        }
+    }
+
+    chooseBestAIMove() {
+        const candidateMoves = this.engine.getValidMoves(AI_PLAYER);
+        if (candidateMoves.length === 0) {
+            return null;
+        }
+
+        let bestMove = candidateMoves[0];
+        let bestScore = -Infinity;
+
+        for (const pit of candidateMoves) {
+            const score = this.evaluateMove(AI_PLAYER, pit);
+            if (score > bestScore) {
+                bestScore = score;
+                bestMove = pit;
+            }
+        }
+
+        return bestMove;
+    }
+
+    evaluateMove(player, pitIndex) {
+        const { engine: simulatedEngine, result } = this.engine.simulateMove(pitIndex);
+        const playerKey = player === HUMAN_PLAYER ? "human" : "ai";
+        const opponentKey = player === HUMAN_PLAYER ? "ai" : "human";
+
+        let score = (result.scores[playerKey] - result.scores[opponentKey]) * 6;
+
+        if (result.extraTurn) {
+            score += 40;
+        }
+        if (result.capture) {
+            score += 15 + result.capture.captured * 3;
+        }
+        if (result.gameOver) {
+            const finalScores = result.scores;
+            score += (finalScores[playerKey] - finalScores[opponentKey]) * 20;
+            return score;
+        }
+
+        const opponent = player === HUMAN_PLAYER ? AI_PLAYER : HUMAN_PLAYER;
+        const opponentMoves = simulatedEngine.getValidMoves(opponent);
+        if (opponentMoves.length === 0) {
+            score += 10;
+        } else {
+            let worstOpponent = -Infinity;
+            for (const oppPit of opponentMoves) {
+                const { result: oppResult } = simulatedEngine.simulateMove(oppPit);
+                let oppScore = (oppResult.scores[opponentKey] - oppResult.scores[playerKey]) * 6;
+                if (oppResult.extraTurn) {
+                    oppScore += 35;
+                }
+                if (oppResult.capture) {
+                    oppScore += 15 + oppResult.capture.captured * 2;
+                }
+                if (oppResult.gameOver) {
+                    oppScore += (oppResult.scores[opponentKey] - oppResult.scores[playerKey]) * 15;
+                }
+                if (oppScore > worstOpponent) {
+                    worstOpponent = oppScore;
+                }
+            }
+            score -= worstOpponent * 0.6;
+        }
+
+        return score;
+    }
+
+    showHint() {
+        if (this.engine.gameOver) {
+            this.showMessage("The game is over.", "warning");
+            return;
+        }
+        if (this.engine.currentPlayer !== HUMAN_PLAYER) {
+            this.showMessage("Hints are only available on your turn!", "warning");
+            return;
+        }
+        if (this.inputLocked) {
+            this.showMessage("Please wait for the AI to finish its turn.", "warning");
+            return;
+        }
+
+        const candidateMoves = this.engine.getValidMoves(HUMAN_PLAYER);
+        if (candidateMoves.length === 0) {
+            this.showMessage("No moves available!", "warning");
+            return;
+        }
+
+        let bestMove = candidateMoves[0];
+        let bestScore = -Infinity;
+        for (const pit of candidateMoves) {
+            const score = this.evaluateMove(HUMAN_PLAYER, pit);
+            if (score > bestScore) {
+                bestScore = score;
+                bestMove = pit;
+            }
+        }
+
+        const pitElement = this.humanPits[bestMove];
+        if (pitElement) {
+            pitElement.classList.add("highlighted");
+            setTimeout(() => pitElement.classList.remove("highlighted"), 2000);
+        }
+
+        this.showMessage(`Hint: Try pit ${bestMove + 1}.`, "info");
+    }
+
+    lockInput(locked) {
+        this.inputLocked = locked;
+        this.updatePitInteractivity();
+    }
+
+    updateTurnIndicator() {
+        if (!this.turnIndicator) {
+            return;
+        }
+
+        if (this.engine.gameOver) {
+            this.turnIndicator.textContent = "Game Over";
+            this.turnIndicator.className = "turn-indicator";
+            return;
+        }
+
+        if (this.engine.currentPlayer === HUMAN_PLAYER && !this.inputLocked) {
+            this.turnIndicator.textContent = "Your Turn";
+        } else if (this.engine.currentPlayer === HUMAN_PLAYER && this.inputLocked) {
+            this.turnIndicator.textContent = "Please wait...";
+        } else {
+            this.turnIndicator.textContent = "AI Thinking...";
+        }
+    }
+
+    updatePitInteractivity() {
+        const board = this.engine.getBoard();
+        this.humanPits.forEach((pitElement, index) => {
+            const shouldEnable = !this.engine.gameOver && !this.inputLocked && this.engine.currentPlayer === HUMAN_PLAYER && board[index] > 0;
+            if (shouldEnable) {
+                pitElement.classList.remove("disabled");
+            } else {
+                pitElement.classList.add("disabled");
+            }
+        });
+    }
+
     updatePitDisplay(pitElement, stoneCount) {
-        const stoneCountDisplay = pitElement.querySelector('.stone-count');
-        const stonesContainer = pitElement.querySelector('.stones-container');
-        
-        stoneCountDisplay.textContent = stoneCount;
-        
-        // Clear existing stones
-        stonesContainer.innerHTML = '';
-        
-        // Show all stones with truly random positioning within pit bounds
+        if (!pitElement) {
+            return;
+        }
+        const countDisplay = pitElement.querySelector(".stone-count");
+        const stonesContainer = pitElement.querySelector(".stones-container");
+
+        if (countDisplay) {
+            countDisplay.textContent = stoneCount;
+        }
+        if (!stonesContainer) {
+            return;
+        }
+
+        stonesContainer.innerHTML = "";
         for (let i = 0; i < stoneCount; i++) {
-            const stone = document.createElement('div');
-            stone.className = 'stone';
-            
-            // Assign a random color to each stone
-            const colorIndex = Math.floor(Math.random() * 8);
-            stone.classList.add(`stone-color-${colorIndex}`);
-            
-            // Adjust stone size based on count to fit more stones
-            let stoneSize = 12;
-            if (stoneCount > 8) stoneSize = 10;
-            if (stoneCount > 15) stoneSize = 8;
-            if (stoneCount > 25) stoneSize = 6;
-            
-            stone.style.width = stoneSize + 'px';
-            stone.style.height = stoneSize + 'px';
-            
-            // Generate random position within circular bounds
-            // Pit is 100x100, so we need to stay within a circle of radius ~35-40
+            const stone = document.createElement("div");
+            stone.className = "stone";
+            stone.classList.add(`stone-color-${Math.floor(Math.random() * 8)}`);
+
+            let size = 12;
+            if (stoneCount > 8) size = 10;
+            if (stoneCount > 15) size = 8;
+            if (stoneCount > 25) size = 6;
+            stone.style.width = `${size}px`;
+            stone.style.height = `${size}px`;
+
             const centerX = 50;
             const centerY = 50;
-            const maxRadius = 35; // Safe radius to stay well within the circular pit
-            
-            let x, y;
+            const maxRadius = 35;
             let attempts = 0;
-            do {
-                // Generate random point within circle
-                const angle = Math.random() * 2 * Math.PI;
+            let x = centerX;
+            let y = centerY;
+
+            while (attempts < 20) {
+                const angle = Math.random() * Math.PI * 2;
                 const radius = Math.random() * maxRadius;
-                
                 x = centerX + Math.cos(angle) * radius;
                 y = centerY + Math.sin(angle) * radius;
-                
-                attempts++;
-                // Fallback after 20 attempts to prevent infinite loop
-                if (attempts > 20) {
-                    x = centerX + (Math.random() - 0.5) * 60;
-                    y = centerY + (Math.random() - 0.5) * 60;
+                const distance = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
+                if (distance <= maxRadius) {
                     break;
                 }
-            } while (Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2)) > maxRadius);
-            
-            // Ensure stone doesn't go outside pit bounds (accounting for stone size)
-            const halfStone = stoneSize / 2;
-            x = Math.max(halfStone + 5, Math.min(95 - halfStone, x));
-            y = Math.max(halfStone + 5, Math.min(95 - halfStone, y));
-            
-            stone.style.left = (x - halfStone) + 'px';
-            stone.style.top = (y - halfStone) + 'px';
-            stone.style.animationDelay = (i * 0.05) + 's';
-            stone.style.zIndex = Math.min(i, 50); // Keep stone z-index below 100 to stay under count display
-            
+                attempts++;
+            }
+
+            const half = size / 2;
+            x = Math.max(half + 5, Math.min(95 - half, x));
+            y = Math.max(half + 5, Math.min(95 - half, y));
+
+            stone.style.left = `${x - half}px`;
+            stone.style.top = `${y - half}px`;
+            stone.style.animationDelay = `${i * 0.05}s`;
+            stone.style.zIndex = Math.min(i, 50);
+
             stonesContainer.appendChild(stone);
         }
     }
 
     updateStoreDisplay(storeElement, stoneCount) {
-        const stoneCountDisplay = storeElement.querySelector('.stone-count');
-        const stonesContainer = storeElement.querySelector('.stones-container');
-        
-        stoneCountDisplay.textContent = stoneCount;
-        
-        // Clear existing stones
-        stonesContainer.innerHTML = '';
-        
-        // Show all stones in store with random positioning
+        if (!storeElement) {
+            return;
+        }
+        const countDisplay = storeElement.querySelector(".stone-count");
+        const stonesContainer = storeElement.querySelector(".stones-container");
+
+        if (countDisplay) {
+            countDisplay.textContent = stoneCount;
+        }
+        if (!stonesContainer) {
+            return;
+        }
+
+        stonesContainer.innerHTML = "";
         for (let i = 0; i < stoneCount; i++) {
-            const stone = document.createElement('div');
-            stone.className = 'stone';
-            
-            // Assign a random color to each stone
-            const colorIndex = Math.floor(Math.random() * 8);
-            stone.classList.add(`stone-color-${colorIndex}`);
-            
-            // Adjust stone size based on count
-            let stoneSize = 12;
-            if (stoneCount > 16) stoneSize = 10;
-            if (stoneCount > 25) stoneSize = 8;
-            if (stoneCount > 40) stoneSize = 6;
-            
-            stone.style.width = stoneSize + 'px';
-            stone.style.height = stoneSize + 'px';
-            
-            // Random positioning within store bounds (store is 120x200, oval shaped)
+            const stone = document.createElement("div");
+            stone.className = "stone";
+            stone.classList.add(`stone-color-${Math.floor(Math.random() * 8)}`);
+
+            let size = 12;
+            if (stoneCount > 16) size = 10;
+            if (stoneCount > 25) size = 8;
+            if (stoneCount > 40) size = 6;
+            stone.style.width = `${size}px`;
+            stone.style.height = `${size}px`;
+
             const storeWidth = 120;
             const storeHeight = 200;
             const margin = 8;
-            const halfStone = stoneSize / 2;
-            
-            // Generate random position within the oval store bounds
-            let x, y;
+            const half = size / 2;
+
             let attempts = 0;
-            do {
-                x = margin + halfStone + Math.random() * (storeWidth - 2 * margin - stoneSize);
-                y = margin + halfStone + Math.random() * (storeHeight - 2 * margin - stoneSize);
-                
-                // Check if position is within the oval shape (roughly)
-                const centerX = storeWidth / 2;
-                const centerY = storeHeight / 2;
-                const normalizedX = (x - centerX) / (centerX - margin);
-                const normalizedY = (y - centerY) / (centerY - margin);
-                const distanceFromCenter = Math.sqrt(normalizedX * normalizedX + normalizedY * normalizedY);
-                
+            let x = storeWidth / 2;
+            let y = storeHeight / 2;
+
+            while (attempts < 30) {
+                x = margin + half + Math.random() * (storeWidth - 2 * (margin + half));
+                y = margin + half + Math.random() * (storeHeight - 2 * (margin + half));
+                const normX = (x - storeWidth / 2) / ((storeWidth / 2) - margin);
+                const normY = (y - storeHeight / 2) / ((storeHeight / 2) - margin);
+                if (normX * normX + normY * normY <= 1) {
+                    break;
+                }
                 attempts++;
-                if (attempts > 30) break; // Prevent infinite loop
-                
-            } while (distanceFromCenter > 0.9); // Keep within 90% of the oval
-            
-            // Ensure final bounds check
-            x = Math.max(margin + halfStone, Math.min(storeWidth - margin - halfStone, x));
-            y = Math.max(margin + halfStone, Math.min(storeHeight - margin - halfStone, y));
-            
-            stone.style.left = (x - halfStone) + 'px';
-            stone.style.top = (y - halfStone) + 'px';
-            stone.style.animationDelay = (i * 0.03) + 's';
-            stone.style.zIndex = Math.min(i, 50); // Keep stone z-index below 100 to stay under count display
-            
+            }
+
+            x = Math.max(margin + half, Math.min(storeWidth - margin - half, x));
+            y = Math.max(margin + half, Math.min(storeHeight - margin - half, y));
+
+            stone.style.left = `${x - half}px`;
+            stone.style.top = `${y - half}px`;
+            stone.style.animationDelay = `${i * 0.03}s`;
+            stone.style.zIndex = Math.min(i, 50);
+
             stonesContainer.appendChild(stone);
         }
     }
 
-    updateTurnIndicator() {
-        if (this.gameOver) {
-            this.turnIndicator.textContent = "Game Over";
-            this.turnIndicator.className = "turn-indicator";
-        } else {
-            this.turnIndicator.textContent = this.currentPlayer === 0 ? "Your Turn" : "AI Thinking...";
-            this.turnIndicator.className = "turn-indicator";
-        }
-    }
-
-    updatePitInteractivity() {
-        this.humanPits.forEach((pit, index) => {
-            if (this.currentPlayer === 0 && !this.gameOver && this.board[index] > 0) {
-                pit.classList.remove('disabled');
-            } else {
-                pit.classList.add('disabled');
-            }
-        });
-    }
-
-    async makeMove(pitIndex) {
-        if (this.animationInProgress || this.gameOver) {
-            console.log('Move blocked - animation in progress:', this.animationInProgress, 'game over:', this.gameOver);
-            return;
-        }
-        
-        console.log('Making move for pit:', pitIndex, 'player:', this.currentPlayer);
-        this.animationInProgress = true;
-        
-        const stones = this.board[pitIndex];
-        if (stones === 0) {
-            this.animationInProgress = false;
-            return;
-        }
-        
-        // Show whose turn it is
-        if (this.currentPlayer === 1) {
-            this.showMessage("AI's turn", "info");
-        }
-        
-        // Clear the selected pit
-        this.board[pitIndex] = 0;
-        
-        // Distribute stones
-        let currentPos = pitIndex;
-        let remainingStones = stones;
-        const distributionPath = [];
-        
-        while (remainingStones > 0) {
-            currentPos = this.getNextPosition(currentPos);
-            
-            // Skip opponent's store
-            if ((this.currentPlayer === 0 && currentPos === 13) || 
-                (this.currentPlayer === 1 && currentPos === 6)) {
-                continue;
-            }
-            
-            this.board[currentPos]++;
-            distributionPath.push(currentPos);
-            remainingStones--;
-        }
-        
-        // Animate stone distribution
-        await this.animateStoneDistribution(pitIndex, distributionPath);
-        
-        const lastPosition = currentPos;
-        let extraTurn = false;
-        let captured = false;
-        
-        // Check for extra turn (landing in own store)
-        if ((this.currentPlayer === 0 && lastPosition === 6) || 
-            (this.currentPlayer === 1 && lastPosition === 13)) {
-            extraTurn = true;
-            if (this.currentPlayer === 0) {
-                this.showMessage("Great! You get another turn!", "success");
-            } else {
-                this.showMessage("AI gets another turn!", "info");
-            }
-        }
-        
-        // Check for capture
-        if (!extraTurn && this.board[lastPosition] === 1) {
-            captured = this.checkCapture(lastPosition);
-        }
-        
-        this.renderBoard();
-        
-        // Check for game end
-        if (this.checkGameEnd()) {
-            this.endGame();
-        } else if (!extraTurn) {
-            // Switch player
-            this.currentPlayer = 1 - this.currentPlayer;
-            this.renderBoard();
-            
-            if (this.currentPlayer === 1) {
-                // AI turn
-                setTimeout(() => this.makeAIMove(), 100);
-            }
-        } else if (extraTurn && this.currentPlayer === 1) {
-            // AI gets another turn
-            setTimeout(() => this.makeAIMove(), 100);
-        }
-        
-        console.log('Move completed, resetting animation flag');
-        this.animationInProgress = false;
-    }
-
-    getNextPosition(pos) {
-        return (pos + 1) % 14;
-    }
-
-    async animateStoneDistribution(startPit, distributionPath) {
-        return new Promise((resolve) => {
-            let currentStep = 0;
-            
-            const animateStep = () => {
-                if (currentStep < distributionPath.length) {
-                    // Add visual feedback for stone placement
-                    const targetPos = distributionPath[currentStep];
-                    this.highlightPosition(targetPos);
-                    
-                    currentStep++;
-                    setTimeout(animateStep, 200);
-                } else {
-                    resolve();
-                }
-            };
-            
-            animateStep();
-        });
-    }
-
-    highlightPosition(position) {
-        let element;
-        
-        if (position === 6) {
-            element = this.humanStore;
-        } else if (position === 13) {
-            element = this.aiStore;
-        } else if (position <= 5) {
-            element = this.humanPits[position];
-        } else {
-            element = this.aiPits[12 - position];
-        }
-        
-        if (element) {
-            element.classList.add('highlighted');
-            setTimeout(() => {
-                element.classList.remove('highlighted');
-            }, 300);
-        }
-    }
-
-    checkCapture(lastPosition) {
-        const isPlayerSide = (this.currentPlayer === 0 && lastPosition <= 5) || 
-                           (this.currentPlayer === 1 && lastPosition >= 7 && lastPosition <= 12);
-        
-        if (!isPlayerSide) return false;
-        
-        const oppositePosition = 12 - lastPosition;
-        const oppositeStonesCount = this.board[oppositePosition];
-        
-        if (oppositeStonesCount > 0) {
-            // Capture stones
-            const capturedStones = 1 + oppositeStonesCount;
-            this.board[lastPosition] = 0;
-            this.board[oppositePosition] = 0;
-            
-            // Add to player's store
-            if (this.currentPlayer === 0) {
-                this.board[6] += capturedStones;
-                this.showMessage(`Captured ${capturedStones} stones!`, "success");
-            } else {
-                this.board[13] += capturedStones;
-                this.showMessage(`AI captured ${capturedStones} stones!`, "warning");
-            }
-            
-            return true;
-        }
-        
-        return false;
-    }
-
-    checkGameEnd() {
-        // Check if all pits on one side are empty
-        const humanSideEmpty = this.board.slice(0, 6).every(count => count === 0);
-        const aiSideEmpty = this.board.slice(7, 13).every(count => count === 0);
-        
-        return humanSideEmpty || aiSideEmpty;
-    }
-
-    endGame() {
-        this.gameOver = true;
-        
-        // Move remaining stones to respective stores
-        const humanRemaining = this.board.slice(0, 6).reduce((sum, count) => sum + count, 0);
-        const aiRemaining = this.board.slice(7, 13).reduce((sum, count) => sum + count, 0);
-        
-        this.board[6] += humanRemaining;
-        this.board[13] += aiRemaining;
-        
-        // Clear all pits
-        for (let i = 0; i <= 5; i++) this.board[i] = 0;
-        for (let i = 7; i <= 12; i++) this.board[i] = 0;
-        
-        this.renderBoard();
-        
-        // Show game result
-        const humanScore = this.board[6];
-        const aiScore = this.board[13];
-        
-        const modal = document.getElementById('game-over-modal');
-        const resultElement = document.getElementById('game-result');
-        const scoreElement = document.getElementById('final-score');
-        
-        if (humanScore > aiScore) {
-            resultElement.textContent = "🎉 You Win!";
-            resultElement.style.color = "#2ecc71";
-            this.showMessage("Congratulations! You won!", "success");
-        } else if (aiScore > humanScore) {
-            resultElement.textContent = "🤖 AI Wins!";
-            resultElement.style.color = "#e74c3c";
-            this.showMessage("AI wins this time. Try again!", "error");
-        } else {
-            resultElement.textContent = "🤝 It's a Tie!";
-            resultElement.style.color = "#f39c12";
-            this.showMessage("It's a tie! Great game!", "info");
-        }
-        
-        scoreElement.innerHTML = `
-            <div>Your Score: <strong>${humanScore}</strong></div>
-            <div>AI Score: <strong>${aiScore}</strong></div>
-        `;
-        
-        modal.style.display = 'block';
-    }
-
-    async makeAIMove() {
-        if (this.gameOver || this.currentPlayer !== 1) return;
-        
-        console.log('AI making move, current player:', this.currentPlayer);
-        
-        // Simple AI strategy with some intelligence
-        const bestMove = this.findBestAIMove();
-        
-        console.log('AI chose move:', bestMove);
-        
-        if (bestMove !== -1) {
-            this.showMessage(`AI selects pit ${bestMove - 6}`, "info");
-            await this.makeMove(bestMove);
-        } else {
-            // No moves available, end turn
-            this.showMessage("AI has no moves available", "warning");
-            this.currentPlayer = 0;
-            this.renderBoard();
-        }
-    }
-
-    findBestAIMove() {
-        const availableMoves = [];
-        
-        // Find all available moves for AI (pits 7-12)
-        for (let i = 7; i <= 12; i++) {
-            if (this.board[i] > 0) {
-                availableMoves.push(i);
-            }
-        }
-        
-        console.log('AI board state:', this.board);
-        console.log('Available AI moves:', availableMoves);
-        
-        if (availableMoves.length === 0) return -1;
-        
-        // AI strategy priorities:
-        // 1. Look for moves that land in AI store (extra turn)
-        // 2. Look for capture opportunities
-        // 3. Prevent human captures
-        // 4. Choose move with most stones
-        
-        let bestMove = availableMoves[0];
-        let bestScore = -1;
-        
-        for (const move of availableMoves) {
-            let score = 0;
-            const stones = this.board[move];
-            let pos = move;
-            
-            // Simulate the move
-            for (let i = 0; i < stones; i++) {
-                pos = this.getNextPosition(pos);
-                if (pos === 6) continue; // Skip human store
-            }
-            
-            // Extra turn bonus
-            if (pos === 13) {
-                score += 100;
-            }
-            
-            // Capture opportunity
-            if (pos >= 7 && pos <= 12 && this.board[pos] === 0) {
-                const oppositePos = 12 - pos;
-                if (this.board[oppositePos] > 0) {
-                    score += this.board[oppositePos] * 10;
-                }
-            }
-            
-            // Prefer moves with more stones (but not too much)
-            score += stones;
-            
-            if (score > bestScore) {
-                bestScore = score;
-                bestMove = move;
-            }
-        }
-        
-        return bestMove;
-    }
-
-    showHint() {
-        if (this.currentPlayer !== 0 || this.gameOver) {
-            this.showMessage("Hints are only available on your turn!", "warning");
-            return;
-        }
-        
-        const bestMove = this.findBestHumanMove();
-        if (bestMove !== -1) {
-            this.humanPits[bestMove].classList.add('highlighted');
-            setTimeout(() => {
-                this.humanPits[bestMove].classList.remove('highlighted');
-            }, 2000);
-            
-            this.showMessage(`Try pit ${bestMove + 1} - it looks promising!`, "info");
-        } else {
-            this.showMessage("No moves available!", "warning");
-        }
-    }
-
-    findBestHumanMove() {
-        const availableMoves = [];
-        
-        // Find all available moves for human (pits 0-5)
-        for (let i = 0; i <= 5; i++) {
-            if (this.board[i] > 0) {
-                availableMoves.push(i);
-            }
-        }
-        
-        if (availableMoves.length === 0) return -1;
-        
-        let bestMove = availableMoves[0];
-        let bestScore = -1;
-        
-        for (const move of availableMoves) {
-            let score = 0;
-            const stones = this.board[move];
-            let pos = move;
-            
-            // Simulate the move
-            for (let i = 0; i < stones; i++) {
-                pos = this.getNextPosition(pos);
-                if (pos === 13) continue; // Skip AI store
-            }
-            
-            // Extra turn bonus
-            if (pos === 6) {
-                score += 100;
-            }
-            
-            // Capture opportunity
-            if (pos >= 0 && pos <= 5 && this.board[pos] === 0) {
-                const oppositePos = 12 - pos;
-                if (this.board[oppositePos] > 0) {
-                    score += this.board[oppositePos] * 10;
-                }
-            }
-            
-            // Prefer moves with more stones
-            score += stones;
-            
-            if (score > bestScore) {
-                bestScore = score;
-                bestMove = move;
-            }
-        }
-        
-        return bestMove;
-    }
-
     showMessage(message, type = "info") {
+        if (!this.messageDisplay) {
+            return;
+        }
+        if (this.messageTimeout) {
+            clearTimeout(this.messageTimeout);
+            this.messageTimeout = null;
+        }
+
         this.messageDisplay.textContent = message;
         this.messageDisplay.className = `message-display ${type}`;
-        
-        // Auto-clear message after 3 seconds
-        setTimeout(() => {
-            this.messageDisplay.textContent = "";
-            this.messageDisplay.className = "message-display";
-        }, 3000);
+
+        if (message) {
+            this.messageTimeout = setTimeout(() => {
+                this.messageDisplay.textContent = "";
+                this.messageDisplay.className = "message-display";
+            }, 3000);
+        }
+    }
+
+    handleGameOver() {
+        const board = this.engine.getBoard();
+        const humanScore = board[6];
+        const aiScore = board[13];
+
+        let resultText = "🤝 It's a Tie!";
+        let color = "#f39c12";
+        if (humanScore > aiScore) {
+            resultText = "🎉 You Win!";
+            color = "#2ecc71";
+            if (this.soundManager) {
+                this.soundManager.playWin();
+            }
+            this.showMessage("Congratulations! You won!", "success");
+        } else if (aiScore > humanScore) {
+            resultText = "🤖 AI Wins!";
+            color = "#e74c3c";
+            this.showMessage("AI wins this time. Try again!", "error");
+        } else {
+            this.showMessage("It's a tie! Great game!", "info");
+        }
+
+        if (this.gameResultText) {
+            this.gameResultText.textContent = resultText;
+            this.gameResultText.style.color = color;
+        }
+
+        if (this.finalScoreText) {
+            this.finalScoreText.innerHTML = `
+                <div>Your Score: <strong>${humanScore}</strong></div>
+                <div>AI Score: <strong>${aiScore}</strong></div>
+            `;
+        }
+
+        if (this.gameOverModal) {
+            this.gameOverModal.style.display = "block";
+        }
     }
 
     newGame() {
-        this.board = [4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 0];
-        this.currentPlayer = 0;
-        this.gameOver = false;
-        this.animationInProgress = false;
-        
-        this.renderBoard();
+        this.engine.reset();
+        this.lockInput(false);
+        if (this.gameOverModal) {
+            this.gameOverModal.style.display = "none";
+        }
+        this.refreshUI();
         this.showMessage("New game started! Your turn.", "info");
     }
 }
 
-// Sound effects (optional)
 class SoundManager {
     constructor() {
         this.sounds = {};
         this.muted = false;
     }
-    
-    createSound(name, frequency, duration) {
-        // Create simple beep sounds using Web Audio API
-        if (!this.muted && window.AudioContext) {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            oscillator.frequency.value = frequency;
-            oscillator.type = 'sine';
-            
-            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
-            
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + duration);
+
+    createSound(frequency, duration) {
+        if (this.muted || !window.AudioContext) {
+            return;
         }
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        oscillator.frequency.value = frequency;
+        oscillator.type = "sine";
+
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + duration);
     }
-    
+
     playMove() {
-        this.createSound('move', 400, 0.1);
+        this.createSound(420, 0.1);
     }
-    
+
     playCapture() {
-        this.createSound('capture', 600, 0.2);
+        this.createSound(640, 0.2);
     }
-    
+
     playWin() {
-        this.createSound('win', 800, 0.3);
+        this.createSound(880, 0.3);
     }
 }
 
-// Initialize the game when the page loads
-document.addEventListener('DOMContentLoaded', () => {
-    const game = new MancalaGame();
+// Initialise the game when the DOM is ready.
+document.addEventListener("DOMContentLoaded", () => {
     const soundManager = new SoundManager();
-    
-    // Add sound toggle
-    const soundToggle = document.createElement('button');
-    soundToggle.className = 'btn btn-tertiary';
-    soundToggle.innerHTML = '🔊 Sound';
-    soundToggle.style.marginLeft = '10px';
-    
-    soundToggle.addEventListener('click', () => {
+    const game = new MancalaGame({ soundManager });
+
+    const soundToggle = document.createElement("button");
+    soundToggle.className = "btn btn-tertiary";
+    soundToggle.innerHTML = "🔊 Sound";
+    soundToggle.style.marginLeft = "10px";
+    soundToggle.addEventListener("click", () => {
         soundManager.muted = !soundManager.muted;
-        soundToggle.innerHTML = soundManager.muted ? '🔇 Sound' : '🔊 Sound';
+        soundToggle.innerHTML = soundManager.muted ? "🔇 Sound" : "🔊 Sound";
     });
-    
-    document.querySelector('.game-controls').appendChild(soundToggle);
-    
-    // Add keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-        if (e.key >= '1' && e.key <= '6' && game.currentPlayer === 0 && !game.gameOver && !game.animationInProgress) {
-            const pitIndex = parseInt(e.key) - 1;
-            if (game.board[pitIndex] > 0) {
+
+    const controls = document.querySelector(".game-controls");
+    if (controls) {
+        controls.appendChild(soundToggle);
+    }
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key >= "1" && event.key <= "6") {
+            const pitIndex = parseInt(event.key, 10) - 1;
+            if (!Number.isNaN(pitIndex)) {
                 game.makeMove(pitIndex);
             }
-        } else if (e.key === 'n' || e.key === 'N') {
+        }
+        if (event.key === "n" || event.key === "N") {
             game.newGame();
-        } else if (e.key === 'h' || e.key === 'H') {
+        }
+        if (event.key === "h" || event.key === "H") {
             game.showHint();
         }
     });
-    
-    // Add keyboard shortcuts info
-    const keyboardInfo = document.createElement('div');
-    keyboardInfo.style.textAlign = 'center';
-    keyboardInfo.style.fontSize = '0.9rem';
-    keyboardInfo.style.color = '#666';
-    keyboardInfo.style.marginTop = '10px';
-    keyboardInfo.innerHTML = '⌨️ Keyboard: 1-6 to play pits, N for new game, H for hint';
-    
-    document.querySelector('.game-footer').appendChild(keyboardInfo);
-});
 
-// Add some Easter eggs and fun features
-document.addEventListener('DOMContentLoaded', () => {
-    // Konami code for super mode
-    let konamiCode = [];
-    const konamiSequence = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyA'];
-    
-    document.addEventListener('keydown', (e) => {
-        konamiCode.push(e.code);
-        if (konamiCode.length > konamiSequence.length) {
-            konamiCode.shift();
+    const keyboardInfo = document.createElement("div");
+    keyboardInfo.style.textAlign = "center";
+    keyboardInfo.style.fontSize = "0.9rem";
+    keyboardInfo.style.color = "#666";
+    keyboardInfo.style.marginTop = "10px";
+    keyboardInfo.innerHTML = "⌨️ Keyboard: 1-6 to play pits, N for new game, H for hint";
+
+    const footer = document.querySelector(".game-footer");
+    if (footer) {
+        footer.appendChild(keyboardInfo);
+    }
+
+    // Easter egg: Konami code for rainbow mode.
+    const konamiInput = [];
+    const konamiSequence = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "KeyB", "KeyA"];
+    document.addEventListener("keydown", (event) => {
+        konamiInput.push(event.code);
+        if (konamiInput.length > konamiSequence.length) {
+            konamiInput.shift();
         }
-        
-        if (konamiCode.join(',') === konamiSequence.join(',')) {
-            document.body.style.filter = 'hue-rotate(180deg)';
-            const message = document.getElementById('message-display') || document.querySelector('.message-display');
+        if (konamiInput.join(",") === konamiSequence.join(",")) {
+            document.body.style.filter = "hue-rotate(180deg)";
+            const message = document.getElementById("message-display") || document.querySelector(".message-display");
             if (message) {
-                message.textContent = '🌈 Rainbow mode activated!';
-                message.className = 'message-display success';
+                message.textContent = "🌈 Rainbow mode activated!";
+                message.className = "message-display success";
             }
-            
-            // Reset after 5 seconds
             setTimeout(() => {
-                document.body.style.filter = '';
+                document.body.style.filter = "";
             }, 5000);
         }
     });
