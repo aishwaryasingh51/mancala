@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mancala - The World's Oldest Game</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="game-container">
+        <header class="game-header">
+            <h1>🏺 Mancala</h1>
+            <p class="subtitle">The World's Oldest Game</p>
+        </header>
+
+        <div class="game-info">
+            <div class="player-info player-info-ai">
+                <div class="player-name">🤖 AI Player</div>
+                <div class="player-score" id="ai-score">0</div>
+            </div>
+            <div class="game-status">
+                <div class="turn-indicator" id="turn-indicator">Your Turn</div>
+                <div class="game-controls">
+                    <button id="new-game-btn" class="btn btn-primary">New Game</button>
+                    <button id="hint-btn" class="btn btn-secondary">Hint</button>
+                </div>
+            </div>
+            <div class="player-info player-info-human">
+                <div class="player-name">👤 You</div>
+                <div class="player-score" id="human-score">0</div>
+            </div>
+        </div>
+
+        <div class="mancala-board">
+            <!-- AI Side (Top) -->
+            <div class="board-side ai-side">
+                <div class="mancala-store ai-store" id="ai-store">
+                    <div class="store-label">AI Store</div>
+                    <div class="stone-count">0</div>
+                    <div class="stones-container"></div>
+                </div>
+                
+                <div class="pits-row ai-pits">
+                    <div class="pit ai-pit" data-pit="12">
+                        <div class="pit-number">6</div>
+                        <div class="stone-count">4</div>
+                        <div class="stones-container"></div>
+                    </div>
+                    <div class="pit ai-pit" data-pit="11">
+                        <div class="pit-number">5</div>
+                        <div class="stone-count">4</div>
+                        <div class="stones-container"></div>
+                    </div>
+                    <div class="pit ai-pit" data-pit="10">
+                        <div class="pit-number">4</div>
+                        <div class="stone-count">4</div>
+                        <div class="stones-container"></div>
+                    </div>
+                    <div class="pit ai-pit" data-pit="9">
+                        <div class="pit-number">3</div>
+                        <div class="stone-count">4</div>
+                        <div class="stones-container"></div>
+                    </div>
+                    <div class="pit ai-pit" data-pit="8">
+                        <div class="pit-number">2</div>
+                        <div class="stone-count">4</div>
+                        <div class="stones-container"></div>
+                    </div>
+                    <div class="pit ai-pit" data-pit="7">
+                        <div class="pit-number">1</div>
+                        <div class="stone-count">4</div>
+                        <div class="stones-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Human Side (Bottom) -->
+            <div class="board-side human-side">
+                <div class="pits-row human-pits">
+                    <div class="pit human-pit" data-pit="0">
+                        <div class="pit-number">1</div>
+                        <div class="stone-count">4</div>
+                        <div class="stones-container"></div>
+                    </div>
+                    <div class="pit human-pit" data-pit="1">
+                        <div class="pit-number">2</div>
+                        <div class="stone-count">4</div>
+                        <div class="stones-container"></div>
+                    </div>
+                    <div class="pit human-pit" data-pit="2">
+                        <div class="pit-number">3</div>
+                        <div class="stone-count">4</div>
+                        <div class="stones-container"></div>
+                    </div>
+                    <div class="pit human-pit" data-pit="3">
+                        <div class="pit-number">4</div>
+                        <div class="stone-count">4</div>
+                        <div class="stones-container"></div>
+                    </div>
+                    <div class="pit human-pit" data-pit="4">
+                        <div class="pit-number">5</div>
+                        <div class="stone-count">4</div>
+                        <div class="stones-container"></div>
+                    </div>
+                    <div class="pit human-pit" data-pit="5">
+                        <div class="pit-number">6</div>
+                        <div class="stone-count">4</div>
+                        <div class="stones-container"></div>
+                    </div>
+                </div>
+                
+                <div class="mancala-store human-store" id="human-store">
+                    <div class="store-label">Your Store</div>
+                    <div class="stone-count">0</div>
+                    <div class="stones-container"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="game-messages">
+            <div id="message-display" class="message-display"></div>
+        </div>
+
+        <footer class="game-footer">
+            <div class="rules-toggle">
+                <button id="rules-btn" class="btn btn-link">📖 How to Play</button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Rules Modal -->
+    <div id="rules-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>How to Play Mancala</h2>
+            <div class="rules-content">
+                <h3>🎯 Objective</h3>
+                <p>Collect more stones in your store than your opponent.</p>
+                
+                <h3>🎮 Gameplay</h3>
+                <ul>
+                    <li>Click on any of your pits (bottom row) to pick up all stones</li>
+                    <li>Distribute stones counter-clockwise, one per pit</li>
+                    <li>Include your store but skip opponent's store</li>
+                    <li>If your last stone lands in your store, take another turn</li>
+                    <li>If your last stone lands in an empty pit on your side, capture that stone plus all stones in the opposite pit</li>
+                </ul>
+                
+                <h3>🏁 Game End</h3>
+                <p>When all pits on one side are empty, the game ends. The other player captures all remaining stones. The player with the most stones wins!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div id="game-over-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="game-result">Game Over</h2>
+            <div id="final-score" class="final-score"></div>
+            <div class="modal-buttons">
+                <button id="play-again-btn" class="btn btn-primary">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

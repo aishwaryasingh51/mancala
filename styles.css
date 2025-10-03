@@ -1,0 +1,654 @@
+/* Modern Mancala Game Styles */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #2D1B69 0%, #11082C 50%, #1A0D3A 100%);
+    min-height: 100vh;
+    padding: 20px;
+    overflow-x: hidden;
+}
+
+.game-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: rgba(26, 13, 58, 0.95);
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(10px);
+    padding: 30px;
+    animation: slideIn 0.8s ease-out;
+    border: 1px solid rgba(138, 43, 226, 0.3);
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Header Styles */
+.game-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.game-header h1 {
+    font-size: 3rem;
+    font-weight: 700;
+    background: linear-gradient(45deg, #9B59B6, #E74C3C, #F39C12);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 8px rgba(155, 89, 182, 0.3);
+}
+
+.subtitle {
+    font-size: 1.2rem;
+    color: #B39DDB;
+    font-weight: 300;
+}
+
+/* Game Info Styles */
+.game-info {
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr;
+    gap: 20px;
+    align-items: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: linear-gradient(135deg, #4A148C 0%, #6A1B9A 100%);
+    border-radius: 15px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(156, 39, 176, 0.3);
+}
+
+.player-info {
+    text-align: center;
+    padding: 15px;
+    background: rgba(74, 20, 140, 0.8);
+    border-radius: 12px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s ease;
+    border: 1px solid rgba(156, 39, 176, 0.4);
+}
+
+.player-info:hover {
+    transform: translateY(-2px);
+}
+
+.player-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #E1BEE7;
+}
+
+.player-score {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #4ecdc4;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.game-status {
+    text-align: center;
+}
+
+.turn-indicator {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 15px;
+    padding: 10px 20px;
+    background: linear-gradient(45deg, #8E24AA, #5E35B1);
+    border-radius: 25px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    animation: pulse 2s infinite;
+    border: 1px solid rgba(156, 39, 176, 0.5);
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.game-controls {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+/* Button Styles */
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 25px;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-primary {
+    background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+    color: white;
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+}
+
+.btn-secondary {
+    background: linear-gradient(45deg, #4ecdc4, #44a08d);
+    color: white;
+    box-shadow: 0 4px 15px rgba(78, 205, 196, 0.4);
+}
+
+.btn-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(78, 205, 196, 0.6);
+}
+
+.btn-tertiary {
+    background: linear-gradient(45deg, #7B1FA2, #9C27B0);
+    color: white;
+    box-shadow: 0 4px 15px rgba(123, 31, 162, 0.4);
+    font-size: 0.9rem;
+}
+
+.btn-tertiary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(123, 31, 162, 0.6);
+}
+
+.btn-link {
+    background: transparent;
+    color: #B39DDB;
+    border: 2px solid rgba(156, 39, 176, 0.4);
+    font-size: 0.9rem;
+}
+
+.btn-link:hover {
+    background: rgba(74, 20, 140, 0.3);
+    border-color: #9C27B0;
+    color: #E1BEE7;
+}
+
+/* Board Styles */
+.mancala-board {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    background: linear-gradient(135deg, #4A148C, #6A1B9A, #8E24AA);
+    padding: 30px;
+    border-radius: 25px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    margin-bottom: 30px;
+    border: 2px solid rgba(156, 39, 176, 0.4);
+}
+
+.board-side {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.ai-side {
+    justify-content: flex-end;
+}
+
+.human-side {
+    justify-content: flex-start;
+}
+
+.pits-row {
+    display: flex;
+    gap: 15px;
+}
+
+.ai-pits {
+    flex-direction: row-reverse;
+}
+
+/* Pit Styles */
+.pit {
+    width: 100px;
+    height: 100px;
+    background: radial-gradient(circle at 30% 30%, #2E1065, #1A0D3A);
+    border-radius: 50%;
+    border: 4px solid #4A148C;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(155, 89, 182, 0.3);
+}
+
+.human-pit:hover {
+    transform: scale(1.05);
+    box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.5), 0 6px 12px rgba(186, 85, 211, 0.6);
+    border-color: #BA55D3;
+}
+
+.pit.disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.pit.highlighted {
+    animation: glow 1.5s infinite;
+}
+
+@keyframes glow {
+    0%, 100% { box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(186, 85, 211, 0.8); }
+    50% { box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.5), 0 8px 16px rgba(186, 85, 211, 1); }
+}
+
+.pit-number {
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    background: linear-gradient(45deg, #9C27B0, #673AB7);
+    color: #fff;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.stone-count {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    margin-bottom: 5px;
+    position: relative;
+    z-index: 100; /* Ensure stone count is always on top */
+    background: rgba(0, 0, 0, 0.3); /* Add subtle background for better visibility */
+    padding: 2px 8px;
+    border-radius: 12px;
+    backdrop-filter: blur(2px);
+}
+
+.stones-container {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: hidden; /* Ensure stones don't escape the container */
+    border-radius: inherit; /* Match the parent's border radius */
+}
+
+/* Ensure stones can layer nicely */
+.pit .stones-container .stone {
+    position: absolute;
+    opacity: 0.95; /* Slight transparency for better layering visibility */
+}
+
+.mancala-store .stones-container .stone {
+    position: absolute;
+    opacity: 0.98; /* Less transparency in stores for better stacking visibility */
+}
+
+/* Store Styles */
+.mancala-store {
+    width: 120px;
+    height: 200px;
+    background: radial-gradient(ellipse at 30% 30%, #2E1065, #1A0D3A);
+    border-radius: 60px;
+    border: 6px solid #4A148C;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-shadow: inset 0 6px 12px rgba(0, 0, 0, 0.5), 0 6px 12px rgba(155, 89, 182, 0.4);
+}
+
+.store-label {
+    position: absolute;
+    top: -12px;
+    background: linear-gradient(45deg, #9C27B0, #673AB7);
+    color: #fff;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.mancala-store .stone-count {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    position: relative;
+    z-index: 100; /* Ensure store count is always on top */
+    background: rgba(0, 0, 0, 0.4); /* Slightly stronger background for stores */
+    padding: 4px 12px;
+    border-radius: 15px;
+    backdrop-filter: blur(2px);
+}
+
+/* Stone Animation */
+.stone {
+    width: 12px;
+    height: 12px;
+    background: radial-gradient(circle at 30% 30%, #FFD700, #DAA520);
+    border-radius: 50%;
+    position: absolute;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    transition: all 0.5s ease;
+    animation: sparkle 2s infinite;
+    border: 1px solid rgba(255, 255, 255, 0.3); /* Subtle light border for better definition */
+}
+
+/* Colorful Stone Variants */
+.stone-color-0 {
+    background: radial-gradient(circle at 30% 30%, #FF6B6B, #E55A4E);
+    border-color: rgba(255, 107, 107, 0.5);
+}
+
+.stone-color-1 {
+    background: radial-gradient(circle at 30% 30%, #4ECDC4, #45B7AF);
+    border-color: rgba(78, 205, 196, 0.5);
+}
+
+.stone-color-2 {
+    background: radial-gradient(circle at 30% 30%, #45B7D1, #3498DB);
+    border-color: rgba(69, 183, 209, 0.5);
+}
+
+.stone-color-3 {
+    background: radial-gradient(circle at 30% 30%, #96CEB4, #85C1A3);
+    border-color: rgba(150, 206, 180, 0.5);
+}
+
+.stone-color-4 {
+    background: radial-gradient(circle at 30% 30%, #FFEAA7, #FDCB6E);
+    border-color: rgba(255, 234, 167, 0.5);
+}
+
+.stone-color-5 {
+    background: radial-gradient(circle at 30% 30%, #DDA0DD, #BA55D3);
+    border-color: rgba(221, 160, 221, 0.5);
+}
+
+.stone-color-6 {
+    background: radial-gradient(circle at 30% 30%, #FFB347, #FF8C42);
+    border-color: rgba(255, 179, 71, 0.5);
+}
+
+.stone-color-7 {
+    background: radial-gradient(circle at 30% 30%, #FF85A2, #FF6B9D);
+    border-color: rgba(255, 133, 162, 0.5);
+}
+
+.stone-more-indicator {
+    position: absolute;
+    font-size: 0.7rem;
+    color: #fff;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    pointer-events: none;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 2px 6px;
+    border-radius: 10px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes sparkle {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+.stone.moving {
+    z-index: 1000;
+    animation: moveStone 0.8s ease-in-out;
+}
+
+@keyframes moveStone {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+/* Messages */
+.game-messages {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.message-display {
+    font-size: 1.1rem;
+    font-weight: 600;
+    padding: 15px;
+    border-radius: 10px;
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.message-display.info {
+    background: linear-gradient(45deg, #3498db, #2980b9);
+    color: white;
+}
+
+.message-display.success {
+    background: linear-gradient(45deg, #2ecc71, #27ae60);
+    color: white;
+}
+
+.message-display.warning {
+    background: linear-gradient(45deg, #f39c12, #e67e22);
+    color: white;
+}
+
+.message-display.error {
+    background: linear-gradient(45deg, #e74c3c, #c0392b);
+    color: white;
+}
+
+/* Footer */
+.game-footer {
+    text-align: center;
+    padding: 20px 0;
+    border-top: 1px solid rgba(156, 39, 176, 0.3);
+    color: #B39DDB;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background: linear-gradient(135deg, #4A148C, #6A1B9A);
+    margin: 5% auto;
+    padding: 30px;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 600px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+    animation: modalSlideIn 0.3s ease-out;
+    border: 1px solid rgba(156, 39, 176, 0.4);
+    color: #E1BEE7;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.close-modal {
+    color: #B39DDB;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.close-modal:hover {
+    color: #fff;
+}
+
+.modal-content h2 {
+    color: #fff;
+    margin-bottom: 20px;
+    font-size: 2rem;
+    text-align: center;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.modal-content h3 {
+    color: #CE93D8;
+    margin: 20px 0 10px 0;
+    font-size: 1.3rem;
+}
+
+.rules-content ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.rules-content li {
+    background: rgba(74, 20, 140, 0.6);
+    margin: 8px 0;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border-left: 4px solid #CE93D8;
+    color: #E1BEE7;
+}
+
+.final-score {
+    text-align: center;
+    font-size: 1.5rem;
+    margin: 20px 0;
+    padding: 20px;
+    background: linear-gradient(45deg, #2E1065, #4A148C);
+    border-radius: 10px;
+    border: 1px solid rgba(156, 39, 176, 0.4);
+    color: #E1BEE7;
+}
+
+.modal-buttons {
+    text-align: center;
+    margin-top: 20px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .game-container {
+        padding: 15px;
+        margin: 10px;
+    }
+    
+    .game-header h1 {
+        font-size: 2rem;
+    }
+    
+    .game-info {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .pit {
+        width: 70px;
+        height: 70px;
+    }
+    
+    .pits-row {
+        gap: 8px;
+    }
+    
+    .mancala-store {
+        width: 80px;
+        height: 140px;
+    }
+    
+    .mancala-board {
+        padding: 15px;
+    }
+    
+    .board-side {
+        gap: 10px;
+    }
+    
+    .modal-content {
+        margin: 10% auto;
+        width: 95%;
+        padding: 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .pit {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .mancala-store {
+        width: 60px;
+        height: 100px;
+    }
+    
+    .stone-count {
+        font-size: 0.9rem;
+    }
+    
+    .mancala-store .stone-count {
+        font-size: 1.2rem;
+    }
+    
+    .game-controls {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .btn {
+        padding: 8px 16px;
+        font-size: 0.9rem;
+    }
+}
