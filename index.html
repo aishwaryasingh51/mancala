@@ -33,88 +33,82 @@
         </div>
 
         <div class="mancala-board">
-            <!-- AI Side (Top) -->
-            <div class="board-side ai-side">
-                <div class="mancala-store ai-store" id="ai-store">
-                    <div class="store-label">AI Store</div>
-                    <div class="stone-count">0</div>
+            <div class="mancala-store ai-store" id="ai-store">
+                <div class="store-label">AI Store</div>
+                <div class="stone-count">0</div>
+                <div class="stones-container"></div>
+            </div>
+
+            <div class="pits-row ai-pits">
+                <div class="pit ai-pit" data-pit="12">
+                    <div class="pit-number">B6</div>
+                    <div class="stone-count">4</div>
                     <div class="stones-container"></div>
                 </div>
-                
-                <div class="pits-row ai-pits">
-                    <div class="pit ai-pit" data-pit="12">
-                        <div class="pit-number">1</div>
-                        <div class="stone-count">4</div>
-                        <div class="stones-container"></div>
-                    </div>
-                    <div class="pit ai-pit" data-pit="11">
-                        <div class="pit-number">2</div>
-                        <div class="stone-count">4</div>
-                        <div class="stones-container"></div>
-                    </div>
-                    <div class="pit ai-pit" data-pit="10">
-                        <div class="pit-number">3</div>
-                        <div class="stone-count">4</div>
-                        <div class="stones-container"></div>
-                    </div>
-                    <div class="pit ai-pit" data-pit="9">
-                        <div class="pit-number">4</div>
-                        <div class="stone-count">4</div>
-                        <div class="stones-container"></div>
-                    </div>
-                    <div class="pit ai-pit" data-pit="8">
-                        <div class="pit-number">5</div>
-                        <div class="stone-count">4</div>
-                        <div class="stones-container"></div>
-                    </div>
-                    <div class="pit ai-pit" data-pit="7">
-                        <div class="pit-number">6</div>
-                        <div class="stone-count">4</div>
-                        <div class="stones-container"></div>
-                    </div>
+                <div class="pit ai-pit" data-pit="11">
+                    <div class="pit-number">B5</div>
+                    <div class="stone-count">4</div>
+                    <div class="stones-container"></div>
+                </div>
+                <div class="pit ai-pit" data-pit="10">
+                    <div class="pit-number">B4</div>
+                    <div class="stone-count">4</div>
+                    <div class="stones-container"></div>
+                </div>
+                <div class="pit ai-pit" data-pit="9">
+                    <div class="pit-number">B3</div>
+                    <div class="stone-count">4</div>
+                    <div class="stones-container"></div>
+                </div>
+                <div class="pit ai-pit" data-pit="8">
+                    <div class="pit-number">B2</div>
+                    <div class="stone-count">4</div>
+                    <div class="stones-container"></div>
+                </div>
+                <div class="pit ai-pit" data-pit="7">
+                    <div class="pit-number">B1</div>
+                    <div class="stone-count">4</div>
+                    <div class="stones-container"></div>
                 </div>
             </div>
 
-            <!-- Human Side (Bottom) -->
-            <div class="board-side human-side">
-                <div class="pits-row human-pits">
-                    <div class="pit human-pit" data-pit="0">
-                        <div class="pit-number">1</div>
-                        <div class="stone-count">4</div>
-                        <div class="stones-container"></div>
-                    </div>
-                    <div class="pit human-pit" data-pit="1">
-                        <div class="pit-number">2</div>
-                        <div class="stone-count">4</div>
-                        <div class="stones-container"></div>
-                    </div>
-                    <div class="pit human-pit" data-pit="2">
-                        <div class="pit-number">3</div>
-                        <div class="stone-count">4</div>
-                        <div class="stones-container"></div>
-                    </div>
-                    <div class="pit human-pit" data-pit="3">
-                        <div class="pit-number">4</div>
-                        <div class="stone-count">4</div>
-                        <div class="stones-container"></div>
-                    </div>
-                    <div class="pit human-pit" data-pit="4">
-                        <div class="pit-number">5</div>
-                        <div class="stone-count">4</div>
-                        <div class="stones-container"></div>
-                    </div>
-                    <div class="pit human-pit" data-pit="5">
-                        <div class="pit-number">6</div>
-                        <div class="stone-count">4</div>
-                        <div class="stones-container"></div>
-                    </div>
-                </div>
-                
-                <div class="mancala-store human-store" id="human-store">
-                    <div class="store-label">Your Store</div>
-                    <div class="stone-count">0</div>
+            <div class="pits-row human-pits">
+                <div class="pit human-pit" data-pit="0">
+                    <div class="pit-number">A1</div>
+                    <div class="stone-count">4</div>
                     <div class="stones-container"></div>
                 </div>
+                <div class="pit human-pit" data-pit="1">
+                    <div class="pit-number">A2</div>
+                    <div class="stone-count">4</div>
+                    <div class="stones-container"></div>
+                </div>
+                <div class="pit human-pit" data-pit="2">
+                    <div class="pit-number">A3</div>
+                    <div class="stone-count">4</div>
+                    <div class="stones-container"></div>
+                </div>
+                <div class="pit human-pit" data-pit="3">
+                    <div class="pit-number">A4</div>
+                    <div class="stone-count">4</div>
+                    <div class="stones-container"></div>
+                </div>
+                <div class="pit human-pit" data-pit="4">
+                    <div class="pit-number">A5</div>
+                    <div class="stone-count">4</div>
+                    <div class="stones-container"></div>
+                </div>
+                <div class="pit human-pit" data-pit="5">
+                    <div class="pit-number">A6</div>
+                    <div class="stone-count">4</div>
+                    <div class="stones-container"></div>
+                </div>
+            </div>
+
+            <div class="mancala-store human-store" id="human-store">
+                <div class="store-label">Your Store</div>
+                <div class="stone-count">0</div>
+                <div class="stones-container"></div>
             </div>
         </div>
 

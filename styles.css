@@ -21,9 +21,9 @@ body {
 }
 
 :root {
-    --pit-size: clamp(52px, 11vw + 8px, 100px);
-    --pit-gap: clamp(6px, 1.8vw, 18px);
-    --store-width: clamp(72px, 18vw, 120px);
+    --pit-size: clamp(32px, 9vw + 6px, 96px);
+    --pit-gap: clamp(4px, 1.4vw, 16px);
+    --store-width: clamp(40px, 13vw, 120px);
     --store-height: clamp(120px, 32vw, 200px);
     --board-radius: clamp(16px, 4vw, 25px);
 }
@@ -221,44 +221,53 @@ body {
 
 /* Board Styles */
 .mancala-board {
-    display: flex;
-    flex-direction: column;
-    gap: calc(var(--pit-gap) * 1.2);
+    display: grid;
+    grid-template-columns: var(--store-width) repeat(6, var(--pit-size)) var(--store-width);
+    grid-template-rows: repeat(2, var(--pit-size));
+    gap: var(--pit-gap);
     background: linear-gradient(135deg, #4A148C, #6A1B9A, #8E24AA);
     padding: clamp(18px, 4vw, 30px);
     border-radius: var(--board-radius);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     margin-bottom: 30px;
     border: 2px solid rgba(156, 39, 176, 0.4);
-    width: 100%;
-    overflow: hidden;
-}
-
-.board-side {
-    display: flex;
-    align-items: center;
-    gap: calc(var(--pit-gap) * 1.2);
-    flex-wrap: wrap;
+    width: min(100%, calc(var(--store-width) * 2 + var(--pit-size) * 6 + var(--pit-gap) * 7));
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
     justify-content: center;
-}
-
-.ai-side,
-.human-side {
-    justify-content: center;
+    align-items: stretch;
+    justify-items: center;
 }
 
 .pits-row {
-    display: grid;
-    grid-template-columns: repeat(6, var(--pit-size));
+    display: flex;
     gap: var(--pit-gap);
     justify-content: center;
-    justify-items: center;
+    align-items: center;
     width: 100%;
-    max-width: calc(6 * var(--pit-size) + 5 * var(--pit-gap));
 }
 
 .ai-pits {
-    direction: rtl;
+    grid-row: 1;
+    grid-column: 2 / span 6;
+    flex-direction: row;
+}
+
+.human-pits {
+    grid-row: 2;
+    grid-column: 2 / span 6;
+    flex-direction: row;
+}
+
+.ai-store {
+    grid-row: 1 / span 2;
+    grid-column: 1;
+}
+
+.human-store {
+    grid-row: 1 / span 2;
+    grid-column: 8;
 }
 
 /* Pit Styles */
@@ -372,23 +381,6 @@ body {
     .mancala-board {
         padding: 20px;
         border-radius: 20px;
-    }
-
-    .board-side {
-        flex-direction: column;
-        gap: 12px;
-    }
-
-    .ai-side .mancala-store {
-        order: -1;
-    }
-
-    .human-side .mancala-store {
-        order: 1;
-    }
-
-    .board-side .mancala-store {
-        margin: 4px 0;
     }
 }
 
@@ -525,10 +517,11 @@ body {
 
 /* Store Styles */
 .mancala-store {
-    width: var(--store-width);
-    height: var(--store-height);
+    width: 100%;
+    height: 100%;
+    min-height: calc(var(--pit-size) * 2 + var(--pit-gap));
     background: radial-gradient(ellipse at 30% 30%, #2E1065, #1A0D3A);
-    border-radius: calc(var(--store-width) * 0.5);
+    border-radius: clamp(30px, calc(var(--store-width) * 0.6), 72px);
     border: 6px solid #4A148C;
     display: flex;
     flex-direction: column;
@@ -536,23 +529,25 @@ body {
     justify-content: center;
     position: relative;
     box-shadow: inset 0 6px 12px rgba(0, 0, 0, 0.5), 0 6px 12px rgba(155, 89, 182, 0.4);
+    align-self: stretch;
+    padding: clamp(8px, 2vh, 18px);
 }
 
 .store-label {
     position: absolute;
-    top: -12px;
+    top: clamp(-18px, -2.2vw, -10px);
     background: linear-gradient(45deg, #9C27B0, #673AB7);
     color: #fff;
-    padding: 4px 12px;
+    padding: clamp(3px, 0.8vw, 6px) clamp(8px, 1.5vw, 14px);
     border-radius: 15px;
-    font-size: 0.8rem;
+    font-size: clamp(0.7rem, 1.5vw, 0.9rem);
     font-weight: 600;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
     border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .mancala-store .stone-count {
-    font-size: 2rem;
+    font-size: clamp(1.4rem, 3vw, 2rem);
     margin-bottom: 10px;
     position: relative;
     z-index: 100; /* Ensure store count is always on top */
