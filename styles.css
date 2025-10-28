@@ -129,6 +129,12 @@ body {
     display: flex;
     gap: 10px;
     justify-content: center;
+    flex-wrap: wrap;
+}
+
+.game-controls .btn {
+    flex: 1 1 160px;
+    text-align: center;
 }
 
 /* Button Styles */
@@ -202,6 +208,8 @@ body {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     margin-bottom: 30px;
     border: 2px solid rgba(156, 39, 176, 0.4);
+    width: 100%;
+    overflow: hidden;
 }
 
 .board-side {
@@ -282,6 +290,173 @@ body {
         transform: scale(1);
         box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(155, 89, 182, 0.35);
         filter: brightness(1);
+    }
+}
+
+/* Responsive tweaks */
+@media (max-width: 900px) {
+    body {
+        padding: 12px;
+    }
+
+    .game-container {
+        padding: 20px;
+        border-radius: 16px;
+    }
+
+    .game-header h1 {
+        font-size: 2.4rem;
+    }
+
+    .game-info {
+        grid-template-columns: 1fr;
+        gap: 15px;
+        text-align: center;
+    }
+
+    .game-status {
+        order: -1;
+    }
+
+    .player-info,
+    .game-status {
+        width: 100%;
+    }
+
+    .turn-indicator {
+        margin-bottom: 10px;
+    }
+
+    .game-controls {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .game-controls .btn {
+        flex: 1 1 auto;
+        width: 100%;
+    }
+
+    .mancala-board {
+        padding: 20px;
+        border-radius: 20px;
+    }
+
+    .board-side {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .pit {
+        width: 80px;
+        height: 80px;
+    }
+
+    .mancala-store {
+        width: 100px;
+        height: 160px;
+    }
+}
+
+@media (max-width: 600px) {
+    .game-container {
+        padding: 16px;
+    }
+
+    .player-info {
+        padding: 12px;
+    }
+
+    .player-score {
+        font-size: 1.6rem;
+    }
+
+    .turn-indicator {
+        font-size: 1.1rem;
+        padding: 8px 16px;
+    }
+
+    .btn {
+        padding: 12px;
+        border-radius: 20px;
+        font-size: 0.95rem;
+    }
+
+    .mancala-board {
+        padding: 16px;
+    }
+
+    .pits-row {
+        gap: 10px;
+    }
+
+    .pit {
+        width: 72px;
+        height: 72px;
+    }
+
+    .mancala-store {
+        width: 90px;
+        height: 150px;
+        border-radius: 50px;
+    }
+
+    .store-label {
+        font-size: 0.8rem;
+        padding: 4px 10px;
+    }
+
+    .stones-container .stone {
+        transform: scale(0.9);
+    }
+}
+
+@media (max-width: 420px) {
+    body {
+        padding: 10px;
+    }
+
+    .game-container {
+        padding: 12px;
+    }
+
+    .game-info {
+        padding: 16px;
+    }
+
+    .game-controls {
+        gap: 10px;
+    }
+
+    .btn {
+        font-size: 0.9rem;
+    }
+
+    .mancala-board {
+        padding: 14px;
+        gap: 16px;
+    }
+
+    .pit {
+        width: 64px;
+        height: 64px;
+        border-width: 3px;
+    }
+
+    .pit-number {
+        width: 20px;
+        height: 20px;
+        font-size: 0.7rem;
+    }
+
+    .mancala-store {
+        width: 80px;
+        height: 140px;
+        border-width: 5px;
+    }
+
+    .store-label {
+        top: -10px;
     }
 }
 

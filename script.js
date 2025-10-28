@@ -821,7 +821,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const soundToggle = document.createElement("button");
     soundToggle.className = "btn btn-tertiary";
     soundToggle.innerHTML = "🔊 Sound";
-    soundToggle.style.marginLeft = "10px";
+    soundToggle.style.marginLeft = "0";
     soundToggle.addEventListener("click", () => {
         soundManager.toggleMuted();
         soundToggle.innerHTML = soundManager.muted ? "🔇 Sound" : "🔊 Sound";
