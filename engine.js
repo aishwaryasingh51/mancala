@@ -9,13 +9,28 @@
 
     class MancalaEngine {
         constructor(board, currentPlayer = 0) {
-            this.initialBoard = Array.from(INITIAL_BOARD);
-            this.reset(board, currentPlayer);
+            this.initialBoard = Array.from(board ?? INITIAL_BOARD);
+            this.initialPlayer = currentPlayer;
+            this.reset(this.initialBoard, currentPlayer);
         }
 
-        reset(board, currentPlayer = 0) {
-            this.board = board ? Array.from(board) : Array.from(this.initialBoard);
-            this.currentPlayer = currentPlayer;
+        reset(board, currentPlayer) {
+            const hasCustomBoard = Array.isArray(board);
+            const sourceBoard = hasCustomBoard ? Array.from(board) : Array.from(this.initialBoard);
+
+            if (hasCustomBoard) {
+                this.initialBoard = Array.from(board);
+            }
+
+            const nextPlayer = typeof currentPlayer === "number"
+                ? currentPlayer
+                : hasCustomBoard
+                    ? 0
+                    : this.initialPlayer ?? 0;
+
+            this.board = sourceBoard;
+            this.currentPlayer = nextPlayer;
+            this.initialPlayer = nextPlayer;
             this.gameOver = false;
         }
 

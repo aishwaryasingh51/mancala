@@ -52,12 +52,30 @@ function testGameEndSweep() {
     }
 }
 
+function testResetPreservesCustomBoard() {
+    const customBoard = [0, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 7];
+    const engine = new MancalaEngine(customBoard, 1);
+
+    engine.applyMove(7);
+    engine.reset();
+    assert.deepStrictEqual(engine.getBoard(), customBoard, "Reset should restore custom initial board");
+    assert.strictEqual(engine.currentPlayer, 1, "Reset should restore custom initial player");
+
+    const alternateBoard = [4, 4, 4, 4, 0, 0, 10, 0, 0, 0, 6, 6, 6, 2];
+    engine.reset(alternateBoard, 0);
+    engine.applyMove(0);
+    engine.reset();
+    assert.deepStrictEqual(engine.getBoard(), alternateBoard, "Reset should adopt new baseline board");
+    assert.strictEqual(engine.currentPlayer, 0, "Reset should adopt new baseline player");
+}
+
 const tests = [
     { name: "Initial state", fn: testInitialState },
     { name: "Extra turn logic", fn: testExtraTurn },
     { name: "Capture rules", fn: testCapture },
     { name: "Skip opponent store", fn: testSkipOpponentStore },
-    { name: "Game end sweep", fn: testGameEndSweep }
+    { name: "Game end sweep", fn: testGameEndSweep },
+    { name: "Reset preserves custom board", fn: testResetPreservesCustomBoard }
 ];
 
 let passed = 0;

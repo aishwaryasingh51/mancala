@@ -18,6 +18,9 @@ class MancalaGame {
         this.soundManager = soundManager ?? null;
         this.inputLocked = false;
         this.messageTimeout = null;
+        this.animationInProgress = false;
+        this.activeAnimationPlayer = null;
+        this.animationDropDelay = 250;
 
         this.cacheDOM();
         this.registerEventListeners();
@@ -102,6 +105,14 @@ class MancalaGame {
 
     refreshUI() {
         const board = this.engine.getBoard();
+        this.renderBoard(board, true);
+        this.updateTurnIndicator();
+    }
+
+    renderBoard(board, updateInteractivity = true) {
+        if (!Array.isArray(board) || board.length < 14) {
+            return;
+        }
 
         this.humanPits.forEach((pitElement, index) => {
             this.updatePitDisplay(pitElement, board[index]);
@@ -114,16 +125,19 @@ class MancalaGame {
 
         this.updateStoreDisplay(this.humanStore, board[6]);
         this.updateStoreDisplay(this.aiStore, board[13]);
+        this.updateScores(board);
 
-        this.updateScores();
-        this.updateTurnIndicator();
-        this.updatePitInteractivity();
+        if (updateInteractivity) {
+            this.updatePitInteractivity(board);
+        }
     }
 
-    updateScores() {
-        const scores = this.engine.getScores();
-        this.humanScoreDisplay.textContent = scores.human;
-        this.aiScoreDisplay.textContent = scores.ai;
+    updateScores(board = this.engine.getBoard()) {
+        if (!Array.isArray(board) || board.length < 14) {
+            return;
+        }
+        this.humanScoreDisplay.textContent = board[6];
+        this.aiScoreDisplay.textContent = board[13];
     }
 
     makeMove(pitIndex) {
@@ -143,21 +157,142 @@ class MancalaGame {
             return;
         }
 
-        this.performMove(pitIndex);
+        void this.performMove(pitIndex);
     }
 
-    performMove(pitIndex) {
+    async performMove(pitIndex, initiatedByAI = false) {
+        if (this.animationInProgress) {
+            return;
+        }
         try {
+            this.lockInput(true);
+            const boardBeforeMove = this.engine.getBoard();
             const result = this.engine.applyMove(pitIndex);
-            if (this.soundManager) {
-                this.soundManager.playMove();
-            }
-            this.refreshUI();
+            await this.animateMove(boardBeforeMove, result);
+            this.renderBoard(this.engine.getBoard(), true);
             this.handleMoveOutcome(result);
         } catch (error) {
             console.error(error);
-            this.showMessage(error.message, "error");
+            this.lockInput(false);
+            this.refreshUI();
+            const message = initiatedByAI ? "AI encountered an error while moving." : error.message;
+            this.showMessage(message, "error");
         }
+    }
+
+    async animateMove(boardBeforeMove, result) {
+        if (!result || !Array.isArray(boardBeforeMove) || boardBeforeMove.length < 14) {
+            this.renderBoard(this.engine.getBoard(), false);
+            return;
+        }
+
+        const sequence = Array.isArray(result.sequence) ? result.sequence : [];
+        const animationBoard = Array.from(boardBeforeMove);
+        const dropDelay = this.animationDropDelay;
+
+        this.animationInProgress = true;
+        this.activeAnimationPlayer = result.player;
+        this.updateTurnIndicator();
+
+        try {
+            const originIndex = typeof result.pitIndex === "number" ? result.pitIndex : -1;
+            if (originIndex >= 0 && originIndex < animationBoard.length) {
+                animationBoard[originIndex] = 0;
+                this.renderBoard(animationBoard, false);
+                this.highlightBoardIndex(originIndex, dropDelay);
+            } else {
+                this.renderBoard(animationBoard, false);
+            }
+
+            for (const position of sequence) {
+                await this.delay(dropDelay);
+                if (position >= 0 && position < animationBoard.length) {
+                    animationBoard[position] += 1;
+                    this.renderBoard(animationBoard, false);
+                    this.highlightBoardIndex(position, dropDelay);
+                    if (this.soundManager) {
+                        this.soundManager.playMove();
+                    }
+                }
+            }
+
+            if (result.capture) {
+                await this.delay(Math.max(dropDelay, 220));
+                const { pit, opposite, store, captured } = result.capture;
+                if (typeof pit === "number" && pit >= 0 && pit < animationBoard.length) {
+                    animationBoard[pit] = 0;
+                this.highlightBoardIndex(pit);
+            }
+            if (typeof opposite === "number" && opposite >= 0 && opposite < animationBoard.length) {
+                animationBoard[opposite] = 0;
+                this.highlightBoardIndex(opposite);
+            }
+            if (typeof store === "number" && store >= 0 && store < animationBoard.length) {
+                animationBoard[store] += captured;
+                this.highlightBoardIndex(store);
+            }
+            this.renderBoard(animationBoard, false);
+        }
+
+        if (result.sweep && Array.isArray(result.sweep.board)) {
+            await this.delay(Math.max(dropDelay, 260));
+            const sweepBoard = result.sweep.board;
+            for (let i = 0; i < animationBoard.length; i++) {
+                animationBoard[i] = sweepBoard[i];
+            }
+            this.renderBoard(animationBoard, false);
+            this.highlightBoardIndex(6);
+            this.highlightBoardIndex(13);
+        }
+
+            await this.delay(120);
+            const finalBoard = Array.isArray(result.board) ? result.board : this.engine.getBoard();
+            this.renderBoard(finalBoard, false);
+        } finally {
+            this.animationInProgress = false;
+            this.activeAnimationPlayer = null;
+            this.updateTurnIndicator();
+        }
+    }
+
+    delay(duration) {
+        return new Promise((resolve) => {
+            setTimeout(resolve, Math.max(0, duration));
+        });
+    }
+
+    getPitElement(boardIndex) {
+        if (typeof boardIndex !== "number") {
+            return null;
+        }
+
+        if (boardIndex >= 0 && boardIndex <= 5) {
+            return this.humanPits[boardIndex] ?? null;
+        }
+        if (boardIndex === 6) {
+            return this.humanStore;
+        }
+        if (boardIndex >= 7 && boardIndex <= 12) {
+            const displayIndex = 12 - boardIndex;
+            return this.aiPits[displayIndex] ?? null;
+        }
+        if (boardIndex === 13) {
+            return this.aiStore;
+        }
+        return null;
+    }
+
+    highlightBoardIndex(boardIndex, duration = this.animationDropDelay) {
+        const element = this.getPitElement(boardIndex);
+        if (!element) {
+            return;
+        }
+        element.classList.remove("animating");
+        void element.offsetWidth;
+        element.classList.add("animating");
+        setTimeout(() => {
+            element.classList.remove("animating");
+        }, Math.max(0, duration));
     }
 
     handleMoveOutcome(result) {
@@ -214,10 +349,12 @@ class MancalaGame {
             this.showMessage("AI is thinking...", "info");
         }
 
-        setTimeout(() => this.makeAIMove(), actualDelay);
+        setTimeout(() => {
+            void this.makeAIMove();
+        }, actualDelay);
     }
 
-    makeAIMove() {
+    async makeAIMove() {
         if (this.engine.gameOver) {
             this.lockInput(true);
             return;
@@ -238,18 +375,7 @@ class MancalaGame {
             return;
         }
 
-        try {
-            const result = this.engine.applyMove(move);
-            if (this.soundManager) {
-                this.soundManager.playMove();
-            }
-            this.refreshUI();
-            this.handleMoveOutcome(result);
-        } catch (error) {
-            console.error(error);
-            this.lockInput(false);
-            this.showMessage("AI encountered an error while moving.", "error");
-        }
+        await this.performMove(move, true);
     }
 
     chooseBestAIMove() {
@@ -291,6 +417,10 @@ class MancalaGame {
             return score;
         }
 
+        if (result.extraTurn) {
+            return score;
+        }
+
         const opponent = player === HUMAN_PLAYER ? AI_PLAYER : HUMAN_PLAYER;
         const opponentMoves = simulatedEngine.getValidMoves(opponent);
         if (opponentMoves.length === 0) {
@@ -298,7 +428,9 @@ class MancalaGame {
         } else {
             let worstOpponent = -Infinity;
             for (const oppPit of opponentMoves) {
-                const { result: oppResult } = simulatedEngine.simulateMove(oppPit);
+                const opponentPerspective = simulatedEngine.clone();
+                opponentPerspective.currentPlayer = opponent;
+                const { result: oppResult } = opponentPerspective.simulateMove(oppPit);
                 let oppScore = (oppResult.scores[opponentKey] - oppResult.scores[playerKey]) * 6;
                 if (oppResult.extraTurn) {
                     oppScore += 35;
@@ -368,6 +500,15 @@ class MancalaGame {
             return;
         }
 
+        if (this.animationInProgress) {
+            const message = this.activeAnimationPlayer === HUMAN_PLAYER
+                ? "Distributing stones..."
+                : "AI is sowing...";
+            this.turnIndicator.textContent = message;
+            this.turnIndicator.className = "turn-indicator";
+            return;
+        }
+
         if (this.engine.gameOver) {
             this.turnIndicator.textContent = "Game Over";
             this.turnIndicator.className = "turn-indicator";
@@ -376,15 +517,20 @@ class MancalaGame {
 
         if (this.engine.currentPlayer === HUMAN_PLAYER && !this.inputLocked) {
             this.turnIndicator.textContent = "Your Turn";
+            this.turnIndicator.className = "turn-indicator";
         } else if (this.engine.currentPlayer === HUMAN_PLAYER && this.inputLocked) {
             this.turnIndicator.textContent = "Please wait...";
+            this.turnIndicator.className = "turn-indicator";
         } else {
             this.turnIndicator.textContent = "AI Thinking...";
+            this.turnIndicator.className = "turn-indicator";
         }
     }
 
-    updatePitInteractivity() {
-        const board = this.engine.getBoard();
+    updatePitInteractivity(board = this.engine.getBoard()) {
+        if (!Array.isArray(board) || board.length < 14) {
+            return;
+        }
         this.humanPits.forEach((pitElement, index) => {
             const shouldEnable = !this.engine.gameOver && !this.inputLocked && this.engine.currentPlayer === HUMAN_PLAYER && board[index] > 0;
             if (shouldEnable) {
@@ -587,26 +733,71 @@ class SoundManager {
     constructor() {
         this.sounds = {};
         this.muted = false;
+        this.audioContext = null;
+    }
+
+    setMuted(muted) {
+        this.muted = Boolean(muted);
+        if (this.muted) {
+            if (this.audioContext?.state === "running") {
+                this.audioContext.suspend().catch(() => {});
+            }
+        } else if (this.audioContext?.state === "suspended") {
+            this.audioContext.resume().catch(() => {});
+        }
+    }
+
+    toggleMuted() {
+        this.setMuted(!this.muted);
+    }
+
+    getAudioContext() {
+        if (this.muted) {
+            return null;
+        }
+
+        if (this.audioContext?.state === "closed") {
+            this.audioContext = null;
+        }
+
+        if (!this.audioContext) {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) {
+                return null;
+            }
+            this.audioContext = new AudioContextClass();
+        }
+
+        if (this.audioContext.state === "suspended") {
+            this.audioContext.resume().catch(() => {});
+        }
+
+        return this.audioContext;
     }
 
     createSound(frequency, duration) {
-        if (this.muted || !window.AudioContext) {
+        const audioContext = this.getAudioContext();
+        if (!audioContext) {
             return;
         }
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
         oscillator.connect(gainNode);
         gainNode.connect(audioContext.destination);
 
-        oscillator.frequency.value = frequency;
+        const now = audioContext.currentTime;
+        oscillator.frequency.setValueAtTime(frequency, now);
         oscillator.type = "sine";
 
-        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+        gainNode.gain.setValueAtTime(0.3, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration);
 
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + duration);
+        oscillator.start(now);
+        oscillator.stop(now + duration);
+        oscillator.addEventListener("ended", () => {
+            oscillator.disconnect();
+            gainNode.disconnect();
+        });
     }
 
     playMove() {
@@ -632,7 +823,7 @@ document.addEventListener("DOMContentLoaded", () => {
     soundToggle.innerHTML = "🔊 Sound";
     soundToggle.style.marginLeft = "10px";
     soundToggle.addEventListener("click", () => {
-        soundManager.muted = !soundManager.muted;
+        soundManager.toggleMuted();
         soundToggle.innerHTML = soundManager.muted ? "🔇 Sound" : "🔊 Sound";
     });
 
