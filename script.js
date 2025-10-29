@@ -8,6 +8,20 @@ const AI_PLAYER = 1;
 const AI_MOVE_DELAY_MS = 0;
 const AI_EXTRA_TURN_DELAY_MS = 0;
 
+const AI_HEURISTIC = Object.freeze({
+    storeDiffWeight: 4,
+    extraTurnBonus: 25,
+    captureBaseBonus: 10,
+    capturePerStoneBonus: 2,
+    gameEndWeight: 18,
+    noMoveBonus: 8,
+    opponentStoreDiffWeight: 4,
+    opponentExtraTurnBonus: 18,
+    opponentCaptureBaseBonus: 9,
+    opponentCapturePerStoneBonus: 2,
+    opponentWeight: 0.45
+});
+
 class MancalaGame {
     constructor({ soundManager } = {}) {
         if (typeof MancalaEngine !== "function") {
@@ -384,18 +398,15 @@ class MancalaGame {
             return null;
         }
 
-        let bestMove = candidateMoves[0];
-        let bestScore = -Infinity;
+        const scoredMoves = candidateMoves.map((pit) => ({
+            pit,
+            score: this.evaluateMove(AI_PLAYER, pit)
+        }));
 
-        for (const pit of candidateMoves) {
-            const score = this.evaluateMove(AI_PLAYER, pit);
-            if (score > bestScore) {
-                bestScore = score;
-                bestMove = pit;
-            }
-        }
-
-        return bestMove;
+        let bestScore = Math.max(...scoredMoves.map((m) => m.score));
+        const topMoves = scoredMoves.filter((m) => m.score >= bestScore - 1);
+        const choice = topMoves[Math.floor(Math.random() * topMoves.length)];
+        return choice.pit;
     }
 
     evaluateMove(player, pitIndex) {
@@ -403,17 +414,17 @@ class MancalaGame {
         const playerKey = player === HUMAN_PLAYER ? "human" : "ai";
         const opponentKey = player === HUMAN_PLAYER ? "ai" : "human";
 
-        let score = (result.scores[playerKey] - result.scores[opponentKey]) * 6;
+        let score = (result.scores[playerKey] - result.scores[opponentKey]) * AI_HEURISTIC.storeDiffWeight;
 
         if (result.extraTurn) {
-            score += 40;
+            score += AI_HEURISTIC.extraTurnBonus;
         }
         if (result.capture) {
-            score += 15 + result.capture.captured * 3;
+            score += AI_HEURISTIC.captureBaseBonus + result.capture.captured * AI_HEURISTIC.capturePerStoneBonus;
         }
         if (result.gameOver) {
             const finalScores = result.scores;
-            score += (finalScores[playerKey] - finalScores[opponentKey]) * 20;
+            score += (finalScores[playerKey] - finalScores[opponentKey]) * AI_HEURISTIC.gameEndWeight;
             return score;
         }
 
@@ -424,28 +435,31 @@ class MancalaGame {
         const opponent = player === HUMAN_PLAYER ? AI_PLAYER : HUMAN_PLAYER;
         const opponentMoves = simulatedEngine.getValidMoves(opponent);
         if (opponentMoves.length === 0) {
-            score += 10;
+            score += AI_HEURISTIC.noMoveBonus;
         } else {
             let worstOpponent = -Infinity;
             for (const oppPit of opponentMoves) {
                 const opponentPerspective = simulatedEngine.clone();
                 opponentPerspective.currentPlayer = opponent;
                 const { result: oppResult } = opponentPerspective.simulateMove(oppPit);
-                let oppScore = (oppResult.scores[opponentKey] - oppResult.scores[playerKey]) * 6;
+                let oppScore = (oppResult.scores[opponentKey] - oppResult.scores[playerKey]) * AI_HEURISTIC.opponentStoreDiffWeight;
                 if (oppResult.extraTurn) {
-                    oppScore += 35;
+                    oppScore += AI_HEURISTIC.opponentExtraTurnBonus;
                 }
                 if (oppResult.capture) {
-                    oppScore += 15 + oppResult.capture.captured * 2;
+                    oppScore += AI_HEURISTIC.opponentCaptureBaseBonus + oppResult.capture.captured * AI_HEURISTIC.opponentCapturePerStoneBonus;
                 }
                 if (oppResult.gameOver) {
-                    oppScore += (oppResult.scores[opponentKey] - oppResult.scores[playerKey]) * 15;
+                    oppScore += (oppResult.scores[opponentKey] - oppResult.scores[playerKey]) * (AI_HEURISTIC.gameEndWeight - 3);
                 }
                 if (oppScore > worstOpponent) {
                     worstOpponent = oppScore;
                 }
             }
-            score -= worstOpponent * 0.6;
+            if (worstOpponent === -Infinity) {
+                worstOpponent = 0;
+            }
+            score -= worstOpponent * AI_HEURISTIC.opponentWeight;
         }
 
         return score;
